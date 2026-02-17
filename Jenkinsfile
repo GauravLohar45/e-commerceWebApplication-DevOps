@@ -1,79 +1,113 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(
-            name: 'CONTAINER_NAME',
-            choices: ['ecommerce-dev', 'ecommerce-test', 'ecommerce-prod'],
-            description: 'Select container name'
-        )
-    }
-
     environment {
-        IMAGE_NAME = "lohar45/jen_ansi_pro"
-        IMAGE_TAG = "latest"
-        DOCKERHUB_CREDENTIALS = "dockerhub-creds"
+        PROJECT_NAME = "swiggy_cicd_docker_ansible_war"
+        DOCKERHUB_USERNAME = "lohar45"
+        DOCKERHUB_REPO = "jen_ansi_pro"
+        IMAGE_NAME = "${DOCKERHUB_USERNAME}/${DOCKERHUB_REPO}"
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage("Build Application Container Image") {
             steps {
-                git 'https://github.com/GauravLohar45/e-commerceWebApplication-DevOps.git'
+                sh """
+                    set -e
+                    docker build -t ${IMAGE_NAME}:latest .
+                """
             }
         }
 
-        stage('Build Docker Image') {
+        stage("Version Docker Image with Build ID") {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-            }
-        }
-
-        stage('DockerHub Login') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: "${DOCKERHUB_CREDENTIALS}",
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
-                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                script {
+                    def buildNumber = env.BUILD_ID
+                    sh "docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${buildNumber}"
                 }
             }
         }
 
-        stage('Push Image') {
+        stage("Authenticate with DockerHub Registry") {
             steps {
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                withCredentials([usernamePassword(
+                    credentialsId: '${DOCKERHUB_CREDENTIALS}',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                        set -e
+                        echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    """
+                }
             }
         }
 
-        stage('Cleanup Local Image') {
+        stage("Push Images to DockerHub Registry") {
             steps {
-                sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+                script {
+                    def buildNumber = env.BUILD_ID
+                    sh """
+                        set -e
+                        docker push ${IMAGE_NAME}:latest
+                        docker push ${IMAGE_NAME}:${buildNumber}
+                    """
+                }
             }
         }
 
-        stage('Deploy via Ansible') {
+        stage("Remove Local Docker Images") {
             steps {
-                sh """
-                ansible-playbook deploy.yml \
-                --extra-vars "container_name=${params.CONTAINER_NAME} image_name=${IMAGE_NAME} image_tag=${IMAGE_TAG}"
-                """
+                script {
+                    def buildNumber = env.BUILD_ID
+                    sh """
+                        docker rmi ${IMAGE_NAME}:latest || true
+                        docker rmi ${IMAGE_NAME}:${buildNumber} || true
+                        docker system prune -f || true
+                    """
+                }
+            }
+        }
+
+        stage("Logout from DockerHub") {
+            steps {
+                sh "docker logout"
+            }
+        }
+
+        stage("Transfer Deployment Playbook to Ansible User") {
+            steps {
+                sh '''
+                    set -e
+                    echo "Copying deploy playbook..."
+
+                    sudo cp "$WORKSPACE/deploy-container.yml" /home/ansible/
+                    sudo chown ansible:ansible /home/ansible/deploy-container.yml
+
+                    echo "File copied successfully!"
+                '''
+            }
+        }
+
+        stage("Execute Ansible Deployment Playbook") {
+            steps {
+                sh '''
+                    set -e
+                    sudo -u ansible ansible-playbook /home/ansible/deploy-container.yml
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment Successful 🚀"
+            echo "Swiggy CI/CD pipeline executed successfully!"
         }
         failure {
-            echo "❌ Pipeline Failed"
+            echo "Swiggy CI/CD pipeline failed!"
         }
         always {
-            echo "Pipeline Finished"
+            echo "Pipeline execution completed."
         }
     }
 }
