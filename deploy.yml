@@ -1,22 +1,19 @@
----
-- name: Deploy Docker Container using Ansible
-  hosts: webserver
+- name: Deploy container
+  hosts: web
   become: yes
-
-  vars:
-    container_name: static-webapp
-    image_name: yourdockerhubusername/static-webapp:v1
-
   tasks:
 
-    - name: Stop and remove existing container if exists
-      shell: docker rm -f {{ container_name }} || true
+    - name: Stop old container
+      shell: docker stop ecommerce || true
 
-    - name: Remove existing image if exists
-      shell: docker rmi {{ image_name }} || true
+    - name: Remove old container
+      shell: docker rm ecommerce || true
 
-    - name: Pull latest image from DockerHub
-      shell: docker pull {{ image_name }}
+    - name: Remove old image
+      shell: docker rmi lohar45/jen_ansi_pro || true
 
-    - name: Run Docker container
-      shell: docker run -d -p 80:80 --name {{ container_name }} {{ image_name }}
+    - name: Pull latest image
+      shell: docker pull lohar45/jen_ansi_pro
+
+    - name: Run container
+      shell: docker run -d --name ecommerce -p 80:80 lohar45/jen_ansi_pro
