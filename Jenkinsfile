@@ -4,67 +4,76 @@ pipeline {
     parameters {
         choice(
             name: 'CONTAINER_NAME',
-            choices: ['static-webapp-dev', 'static-webapp-test', 'static-webapp-prod'],
-            description: 'Select container name to run'
+            choices: ['ecommerce-dev', 'ecommerce-test', 'ecommerce-prod'],
+            description: 'Select container name'
         )
     }
 
     environment {
-        IMAGE_NAME = "venkateshjaggaraju/static-webapp"
-        IMAGE_TAG = "v1"
+        IMAGE_NAME = "lohar45/jen_ansi_pro"
+        IMAGE_TAG = "latest"
         DOCKERHUB_CREDENTIALS = "dockerhub-creds"
     }
 
     stages {
 
-        stage('Stage-1: Build Docker Image') {
+        stage('Checkout Code') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:latest ."
+                git 'https://github.com/GauravLohar45/e-commerceWebApplication-DevOps.git'
             }
         }
 
-        stage('Stage-2: Tag Docker Image') {
+        stage('Build Docker Image') {
             steps {
-                sh "docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${IMAGE_TAG}"
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
-        stage('Stage-3: Login to DockerHub') {
+        stage('DockerHub Login') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${DOCKERHUB_CREDENTIALS}",
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
                     sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
                 }
             }
         }
 
-        stage('Stage-4: Push Image to DockerHub') {
+        stage('Push Image') {
             steps {
                 sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
 
-        stage('Stage-5: Remove Image Locally') {
+        stage('Cleanup Local Image') {
             steps {
                 sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
             }
         }
 
-        stage('Stage-6: Trigger Ansible Playbook') {
+        stage('Deploy via Ansible') {
             steps {
-                sh "ansible-playbook deploy.yml --extra-vars \"container_name=${params.CONTAINER_NAME}\""
+                sh """
+                ansible-playbook deploy.yml \
+                --extra-vars "container_name=${params.CONTAINER_NAME} image_name=${IMAGE_NAME} image_tag=${IMAGE_TAG}"
+                """
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline completed successfully 🎉"
+            echo "✅ Deployment Successful 🚀"
         }
         failure {
-            echo "Pipeline failed ❌"
+            echo "❌ Pipeline Failed"
         }
         always {
-            echo "Pipeline execution finished"
+            echo "Pipeline Finished"
         }
     }
 }
