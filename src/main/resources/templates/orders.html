@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<div th:each="order:${orders}">
+		<h1 th:text="${order.id}"></h1>
+		<h1 th:text="${order.creationTime}"></h1>
+		<h1 th:text="${order.paymentId}"></h1>
+		<span th:each="item:${order.items}"> <span
+			th:text="${item.name}+' '+${item.quantity}+' X ' +${item.price}+' = '+${item.quantity*item.price}"></span><br>
+		</span>
+		<h1 th:text="${order.totalAmount}"></h1>
+		<h1>----------------------------------------</h1>
+	</div>
+</body>
+</html>

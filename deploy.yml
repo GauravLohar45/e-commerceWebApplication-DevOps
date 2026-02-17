@@ -1,0 +1,22 @@
+---
+- name: Deploy Docker Container using Ansible
+  hosts: webserver
+  become: yes
+
+  vars:
+    container_name: static-webapp
+    image_name: yourdockerhubusername/static-webapp:v1
+
+  tasks:
+
+    - name: Stop and remove existing container if exists
+      shell: docker rm -f {{ container_name }} || true
+
+    - name: Remove existing image if exists
+      shell: docker rmi {{ image_name }} || true
+
+    - name: Pull latest image from DockerHub
+      shell: docker pull {{ image_name }}
+
+    - name: Run Docker container
+      shell: docker run -d -p 80:80 --name {{ container_name }} {{ image_name }}
