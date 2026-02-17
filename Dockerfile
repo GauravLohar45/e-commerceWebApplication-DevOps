@@ -1,11 +1,12 @@
-FROM nginx:latest
+FROM nginx:alpine
 
 # Remove default nginx files
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy project files into nginx
+# Copy entire project
 COPY . /usr/share/nginx/html
 
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
+
