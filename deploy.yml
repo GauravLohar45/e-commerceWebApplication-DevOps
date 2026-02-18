@@ -1,11 +1,11 @@
 ---
 - name: Deploy Docker Container using Ansible
-  hosts: webserver
+  hosts: dev
   become: yes
 
   vars:
     container_name: static-webapp
-    image_name: yourdockerhubusername/static-webapp:v1
+    image_name: yourdockerhubusername/jen_ansi_dev
 
   tasks:
 
