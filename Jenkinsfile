@@ -4,13 +4,15 @@ pipeline {
     environment {
         IMAGE_NAME = "lohar45/jen_ansi_dev"
         TAG = "latest"
+        REPO_URL = "https://github.com/GauravLohar45/e-commerceWebApplication-DevOps.git"
+        BRANCH = "main"
     }
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/GauravLohar45/e-commerceWebApplication-DevOps.git'
+                git branch: "${BRANCH}", url: "${REPO_URL}"
             }
         }
 
